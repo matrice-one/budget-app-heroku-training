@@ -1,50 +1,73 @@
-from flask import Flask, request, jsonify
+from flask import Flask, render_template
+from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, render_template, url_for, request, redirect, make_response      
+
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://cqxcgqrnjwfhwh:868ff47de601c96490987f90e4fbbab6f2548b68d81338a64b7f6921aa159e8d@ec2-54-220-35-19.eu-west-1.compute.amazonaws.com:5432/d3og7o3oibfagv'
+db = SQLAlchemy(app)
+db.create_all()
 
-@app.route('/getmsg/', methods=['GET'])
-def respond():
-    # Retrieve the name from url parameter
-    name = request.args.get("name", None)
+#...
 
-    # For debugging
-    print(f"got name {name}")
 
-    response = {}
+#...
 
-    # Check if user sent a name at all
-    if not name:
-        response["ERROR"] = "no name found, please send a name."
-    # Check if the user entered a number not a name
-    elif str(name).isdigit():
-        response["ERROR"] = "name can't be numeric."
-    # Now the user entered a valid name
-    else:
-        response["MESSAGE"] = f"Welcome {name} to our awesome platform!!"
+class Transaction(db.Model):
+    __tablename__ = 'transaction'
+    id = db.Column(db.Integer, primary_key=True)
+    amount = db.Column(db.Integer)
+    comment = db.Column(db.String(50))
+    category = db.Column(db.String(50))
 
-    # Return the response in json format
-    return jsonify(response)
+    def __init__(self, amount, created_on, updated_on, comment=None):
+        self.amount = amount
 
-@app.route('/post/', methods=['POST'])
-def post_something():
-    param = request.form.get('name')
-    print(param)
-    # You can add the test cases you made in the previous function, but in our case here you are just testing the POST functionality
-    if param:
-        return jsonify({
-            "Message": f"Welcome {name} to our awesome platform!!",
-            # Add this option to distinct the POST request
-            "METHOD" : "POST"
-        })
-    else:
-        return jsonify({
-            "ERROR": "no name found, please send a name."
-        })
+        self.comment = comment
+        self.created_on = created_on,
+        self.updated_on = updated_on,
 
-# A welcome message to test our server
-@app.route('/')
-def index():
-    return "<h1>Welcome to our server !!</h1>"
+    def __repr__(self):
+        return '<Transaction %r>' % self.id
 
-if __name__ == '__main__':
-    # Threaded option to enable multiple instances for multiple user access support
-    app.run(threaded=True, port=5000)
+
+# ROUTES
+
+@app.route("/")
+def home():
+    return render_template("home.html")
+    
+@app.route("/explain")
+def about():
+    return render_template("explain.html")
+
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
+
+@app.route("/addentry", methods=["POST"])
+def truc():
+    print(request.form)
+    valeur = request.form
+    newdep = Transaction(
+        valeur['montant'], 'all good', 'all good')
+    db.session.add(newdep)
+    db.session.commit()
+    return redirect(url_for('budget_bp.seedb'))
+
+
+@app.route("/dashboard_with_stuff")
+def dashboard_with_stuff():
+    depenses = Transaction.query.all()
+    deps = []
+    for depense in depenses:
+        print("Amount = " + str(depense.amount))
+        dep = {"amount": depense.amount}
+        deps.append(dep)
+    print(deps)
+    return render_template("dashboard_with_stuff.html", depenses=deps)
+    
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
+# MODEL
